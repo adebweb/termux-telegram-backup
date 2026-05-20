@@ -1,14 +1,14 @@
 #!/data/data/com.termux/files/usr/bin/env bash
 # ═══════════════════════════════════════════════════════
 #   Termux Telegram Backup — Professional Installer
-#   Install:  curl -sL https://raw.githubusercontent.com/YOURNAME/termux-telegram-backup/main/install.sh | bash
-#   Uninstall: curl -sL https://raw.githubusercontent.com/YOURNAME/termux-telegram-backup/main/install.sh | bash -s -- --uninstall
+#   Install:  curl -sL https://raw.githubusercontent.com/adebweb/termux-telegram-backup/main/install.sh | bash
+#   Uninstall: curl -sL https://raw.githubusercontent.com/adebweb/termux-telegram-backup/main/install.sh | bash -s -- --uninstall
 # ═══════════════════════════════════════════════════════
 
 set -euo pipefail
 
 # ── Metadata ──────────────────────────────────────────
-REPO_RAW="https://raw.githubusercontent.com/YOURNAME/termux-telegram-backup/main"
+REPO_RAW="https://raw.githubusercontent.com/adebweb/termux-telegram-backup/main"
 VERSION="1.0.0"
 PROJECT_DIR="/storage/emulated/0/termux_backups_telegram"
 SHORTCUT_DIR="$HOME/.shortcuts/tasks"
