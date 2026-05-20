@@ -71,7 +71,7 @@ done
 # ── Uninstall ─────────────────────────────────────────
 if [[ "$UNINSTALL" == true ]]; then
     echo -e "${R}${W}"
-    read -rp "⚠️  This will delete ALL backup data. Continue? [y/N]: " confirm
+    read -rp "⚠️  This will delete ALL backup data. Continue? [y/N]: " confirm < /dev/tty
     echo -e "${RS}"
     [[ "$confirm" =~ ^[Yy]$ ]] || exit 0
 
@@ -135,7 +135,7 @@ if [[ -z "$TOKEN" ]]; then
     if [[ "$SILENT" == true ]]; then
         err "--token is required in silent mode."
     fi
-    read -rp "🤖 Telegram BOT_TOKEN: " TOKEN
+    read -rp "🤖 Telegram BOT_TOKEN: " TOKEN < /dev/tty
     [[ -z "$TOKEN" ]] && err "BOT_TOKEN is required."
 fi
 dbg "TOKEN length: ${#TOKEN} chars"
@@ -144,7 +144,7 @@ if [[ -z "$CHAT_ID" ]]; then
     if [[ "$SILENT" == true ]]; then
         err "--chat-id is required in silent mode."
     fi
-    read -rp "💬 Telegram CHAT_ID:  " CHAT_ID
+    read -rp "💬 Telegram CHAT_ID:  " CHAT_ID < /dev/tty
     [[ -z "$CHAT_ID" ]] && err "CHAT_ID is required."
 fi
 dbg "CHAT_ID: $CHAT_ID"
@@ -153,7 +153,7 @@ ADD_WA="n"
 if [[ "$SILENT" == false ]]; then
     echo ""
     info "Default folders: DCIM, Download, Pictures, Movies"
-    read -rp "➕ Include WhatsApp Statuses? [y/N]: " ADD_WA
+    read -rp "➕ Include WhatsApp Statuses? [y/N]: " ADD_WA < /dev/tty
 fi
 dbg "WhatsApp Statuses: $ADD_WA"
 
