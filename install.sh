@@ -7,7 +7,8 @@
 #   Uninstall: curl -sL ... | bash -s -- --uninstall
 # ═══════════════════════════════════════════════════════
 
-set -euo pipefail
+# Only catch unbound variables, don't die on command failures
+set -u
 
 # ── Metadata ──────────────────────────────────────────
 REPO_RAW="https://raw.githubusercontent.com/adebweb/termux-telegram-backup/main"
@@ -23,9 +24,9 @@ D="\033[2m"; BOLD="\033[1m"; RS="\033[0m"
 log()  { echo -e "${B}[•]${RS} $1"; }
 ok()   { echo -e "${G}[✓]${RS} $1"; }
 warn() { echo -e "${Y}[!]${RS} $1"; }
-err()  { echo -e "${R}[✗]${RS} $1"; exit 1; }
+err()  { echo -e "${R}[✗]${RS} $1"; }
 info() { echo -e "${D}    $1${RS}"; }
-dbg()  { [[ "$VERBOSE" == true ]] && echo -e "${D}[DBG] $1${RS}"; }
+dbg()  { [[ "${VERBOSE:-false}" == "true" ]] && echo -e "${D}[DBG] $1${RS}"; }
 
 banner() {
     clear 2>/dev/null || true
@@ -87,40 +88,39 @@ fi
 banner
 
 log "Running pre-flight checks..."
-dbg "VERBOSE mode enabled — showing all steps"
 [[ "$SILENT" == false ]] && sleep 1
 
 # Check Termux environment
-dbg "Checking Termux environment..."
 if [[ -z "${TERMUX_VERSION:-}" && ! -d "/data/data/com.termux" ]]; then
     err "This installer is designed for Termux only."
+    exit 1
 fi
 ok "Environment validated"
 
 # Check network
-dbg "Checking internet connection..."
 if ! curl -s --max-time 5 https://api.telegram.org >/dev/null 2>&1; then
     err "No internet connection or Telegram is blocked."
+    exit 1
 fi
 ok "Internet connection OK"
 
 # ── Dependencies ──────────────────────────────────────
 log "Installing dependencies (this may take a minute)..."
-dbg "Running: pkg update && pkg install python cronie termux-api"
 pkg update -y -o Dpkg::Options::="--force-confold" >/dev/null 2>&1 || true
 pkg install -y python cronie termux-api >/dev/null 2>&1 || warn "Some packages may already exist"
-dbg "Checking Python requests module..."
 python3 -c "import requests" 2>/dev/null || pip install requests -q >/dev/null 2>&1
 ok "Dependencies ready"
 
 # ── Storage Permission ────────────────────────────────
-dbg "Checking storage permission..."
 if [[ ! -d "/storage/emulated/0/Download" ]]; then
     log "Requesting storage permission..."
     termux-setup-storage
     [[ "$SILENT" == false ]] && echo -e "${Y}    → Tap ALLOW on the dialog, then wait...${RS}"
     sleep 5
-    [[ ! -d "/storage/emulated/0/Download" ]] && err "Storage permission denied."
+    if [[ ! -d "/storage/emulated/0/Download" ]]; then
+        err "Storage permission denied."
+        exit 1
+    fi
 fi
 ok "Storage access granted"
 
@@ -134,20 +134,26 @@ fi
 if [[ -z "$TOKEN" ]]; then
     if [[ "$SILENT" == true ]]; then
         err "--token is required in silent mode."
+        exit 1
     fi
     read -rp "🤖 Telegram BOT_TOKEN: " TOKEN < /dev/tty
-    [[ -z "$TOKEN" ]] && err "BOT_TOKEN is required."
+    if [[ -z "$TOKEN" ]]; then
+        err "BOT_TOKEN is required."
+        exit 1
+    fi
 fi
-dbg "TOKEN length: ${#TOKEN} chars"
 
 if [[ -z "$CHAT_ID" ]]; then
     if [[ "$SILENT" == true ]]; then
         err "--chat-id is required in silent mode."
+        exit 1
     fi
     read -rp "💬 Telegram CHAT_ID:  " CHAT_ID < /dev/tty
-    [[ -z "$CHAT_ID" ]] && err "CHAT_ID is required."
+    if [[ -z "$CHAT_ID" ]]; then
+        err "CHAT_ID is required."
+        exit 1
+    fi
 fi
-dbg "CHAT_ID: $CHAT_ID"
 
 ADD_WA="n"
 if [[ "$SILENT" == false ]]; then
@@ -155,33 +161,31 @@ if [[ "$SILENT" == false ]]; then
     info "Default folders: DCIM, Download, Pictures, Movies"
     read -rp "➕ Include WhatsApp Statuses? [y/N]: " ADD_WA < /dev/tty
 fi
-dbg "WhatsApp Statuses: $ADD_WA"
 
 FOLDERS='"/storage/emulated/0/DCIM", "/storage/emulated/0/Download", "/storage/emulated/0/Pictures", "/storage/emulated/0/Movies"'
 if [[ "$ADD_WA" =~ ^[Yy]$ ]]; then
     FOLDERS="$FOLDERS, "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses""
     ok "WhatsApp Statuses included"
 fi
-dbg "Folders: [$FOLDERS]"
 
 # ── Download Engine ───────────────────────────────────
 log "Downloading backup engine v${VERSION}..."
-dbg "Creating directories..."
 mkdir -p "$PROJECT_DIR"
 mkdir -p "$SHORTCUT_DIR"
 
-dbg "Downloading backup.py..."
-curl -sL "${REPO_RAW}/backup.py" -o "${PROJECT_DIR}/backup.py" || err "Failed to download backup.py"
+if ! curl -sL "${REPO_RAW}/backup.py" -o "${PROJECT_DIR}/backup.py"; then
+    err "Failed to download backup.py"
+    exit 1
+fi
 
-dbg "Downloading config.json..."
-curl -sL "${REPO_RAW}/config.json" -o "${PROJECT_DIR}/config.json" || err "Failed to download config.json"
+if ! curl -sL "${REPO_RAW}/config.json" -o "${PROJECT_DIR}/config.json"; then
+    err "Failed to download config.json"
+    exit 1
+fi
 
 # Inject user config into config.json
-dbg "Injecting TOKEN into config.json..."
 sed -i "s|YOUR_BOT_TOKEN|$TOKEN|g" "${PROJECT_DIR}/config.json"
-dbg "Injecting CHAT_ID into config.json..."
 sed -i "s|YOUR_CHAT_ID|$CHAT_ID|g" "${PROJECT_DIR}/config.json"
-dbg "Injecting FOLDERS into config.json..."
 sed -i "s|\[YOUR_FOLDERS\]|[$FOLDERS]|g" "${PROJECT_DIR}/config.json"
 
 chmod +x "${PROJECT_DIR}/backup.py"
@@ -199,13 +203,11 @@ ok "Shortcut ready"
 
 # ── Cron Schedule ─────────────────────────────────────
 log "Scheduling daily backup at 05:30..."
-dbg "Adding cron job..."
 (crontab -l 2>/dev/null | grep -v "termux_backups_telegram" || true; echo "30 5 * * * termux-wake-lock && python3 ${PROJECT_DIR}/backup.py") | crontab -
 ok "Automation scheduled"
 
 # ── First Run Test ────────────────────────────────────
 log "Running test ping to Telegram..."
-dbg "Verifying bot token..."
 if python3 -c "
 import requests, json
 with open('${PROJECT_DIR}/config.json') as f: cfg = json.load(f)
