@@ -220,26 +220,24 @@ fi
 
 # ── Success Banner ────────────────────────────────────
 banner
-cat << EOF
-
-${G}${W}✅ Installation Complete!${RS}
-
-${W}📁 Project Location:${RS}
-   Internal Storage → ${C}termux_backups_telegram${RS}
-
-${W}📱 Home Screen Widget:${RS}
-   1. Install ${Y}Termux:Widget${RS} from F-Droid.
-   2. Long-press home screen → Widgets.
-   3. Pick ${C}Termux:Widget → tasks → BackupNow${RS}.
-
-${W}⚠️  Battery:${RS}
-   Settings → Apps → Termux → Battery → ${R}Unrestricted${RS}
-
-${W}🚀 Manual Run:${RS}
-   ${D}python3 ${PROJECT_DIR}/backup.py${RS}
-
-${W}🗑️  Uninstall:${RS}
-   ${D}curl -sL ${REPO_RAW}/install.sh | bash -s -- --uninstall${RS}
-
-${G}System ready. Your files are safe. 🛡️${RS}
-EOF
+echo ""
+echo -e "${G}${W}✅ Installation Complete!${RS}"
+echo ""
+echo -e "${W}📁 Project Location:${RS}"
+echo -e "   Internal Storage → ${C}termux_backups_telegram${RS}"
+echo ""
+echo -e "${W}📱 Home Screen Widget:${RS}"
+echo -e "   1. Install ${Y}Termux:Widget${RS} from F-Droid."
+echo -e "   2. Long-press home screen → Widgets."
+echo -e "   3. Pick ${C}Termux:Widget → tasks → BackupNow${RS}."
+echo ""
+echo -e "${W}⚠️  Battery:${RS}"
+echo -e "   Settings → Apps → Termux → Battery → ${R}Unrestricted${RS}"
+echo ""
+echo -e "${W}🚀 Manual Run:${RS}"
+echo -e "   ${D}python3 ${PROJECT_DIR}/backup.py${RS}"
+echo ""
+echo -e "${W}🗑️  Uninstall:${RS}"
+echo -e "   ${D}curl -sL ${REPO_RAW}/install.sh | bash -s -- --uninstall${RS}"
+echo ""
+echo -e "${G}System ready. Your files are safe. 🛡️${RS}"
