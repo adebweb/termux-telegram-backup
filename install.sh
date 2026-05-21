@@ -1,16 +1,18 @@
 #!/data/data/com.termux/files/usr/bin/env bash
 # ═══════════════════════════════════════════════════════
-#   Termux Telegram Backup — Ultimate Installer v3.0
-#   Self-Contained: backup.py embedded, no downloads needed
-#   Repo: https://github.com/adebweb/termux-telegram-backup
+#   Termux Telegram Backup — Ultimate Installer v3.1
+#   Self-Contained | Bulletproof | Works Every Time
 # ═══════════════════════════════════════════════════════
 
+# Strict mode but with explicit error handling
 set -u
 
+# ── Colors ────────────────────────────────────────────
 R='\033[1;31m'; G='\033[1;32m'; Y='\033[1;33m'
 B='\033[1;34m'; C='\033[1;36m'; W='\033[1;37m'
 D='\033[2m'; RS='\033[0m'
 
+# ── Helpers ───────────────────────────────────────────
 log()  { printf "${B}[•]${RS} %s\n" "$1"; }
 ok()   { printf "${G}[✓]${RS} %s\n" "$1"; }
 warn() { printf "${Y}[!]${RS} %s\n" "$1"; }
@@ -22,14 +24,16 @@ banner() {
     clear 2>/dev/null || true
     printf "${C}
 ╔═══════════════════════════════════════════════════════╗
-║  📦 Termux Telegram Backup Installer v3.0             ║
-║  Self-Contained | No Downloads | Works Offline          ║
+║  📦 Termux Telegram Backup Installer v3.1             ║
+║  Self-Contained | Bulletproof | Works Every Time      ║
 ╚═══════════════════════════════════════════════════════╝${RS}\n\n"
 }
 
+# ── Critical: Verify paths ────────────────────────────
 PROJECT_DIR="/storage/emulated/0/termux_backups_telegram"
 SHORTCUT_DIR="$HOME/.shortcuts/tasks"
 
+# ── Parse Args ────────────────────────────────────────
 UNINSTALL=false
 SILENT=false
 TOKEN=""
@@ -57,6 +61,9 @@ HELP
     esac
 done
 
+# ═══════════════════════════════════════════════════════
+# UNINSTALL
+# ═══════════════════════════════════════════════════════
 if [[ "$UNINSTALL" == true ]]; then
     step "UNINSTALL"
     printf "${R}"
@@ -70,6 +77,9 @@ if [[ "$UNINSTALL" == true ]]; then
     exit 0
 fi
 
+# ═══════════════════════════════════════════════════════
+# PRE-FLIGHT
+# ═══════════════════════════════════════════════════════
 banner
 step "PRE-FLIGHT CHECKS"
 
@@ -80,6 +90,9 @@ if ! curl -s --max-time 5 https://api.telegram.org >/dev/null 2>&1; then
 fi
 ok "Environment OK"
 
+# ═══════════════════════════════════════════════════════
+# DEPENDENCIES
+# ═══════════════════════════════════════════════════════
 step "INSTALLING DEPENDENCIES"
 
 log "Updating packages..."
@@ -92,6 +105,9 @@ log "Checking python requests..."
 python3 -c "import requests" 2>/dev/null || pip install requests -q >/dev/null 2>&1
 ok "Dependencies ready"
 
+# ═══════════════════════════════════════════════════════
+# STORAGE PERMISSION
+# ═══════════════════════════════════════════════════════
 step "STORAGE PERMISSION"
 
 if [[ ! -d "/storage/emulated/0/Download" ]]; then
@@ -103,6 +119,9 @@ if [[ ! -d "/storage/emulated/0/Download" ]]; then
 fi
 ok "Storage access granted"
 
+# ═══════════════════════════════════════════════════════
+# CONFIGURATION
+# ═══════════════════════════════════════════════════════
 step "CONFIGURATION"
 
 if [[ "$SILENT" == false ]]; then
@@ -170,13 +189,42 @@ if [[ "$SILENT" == false ]]; then
     [[ "$input" =~ ^[Nn]$ ]] && DEDUPLICATE="false"
 fi
 
+# ═══════════════════════════════════════════════════════
+# BUILD PROJECT — BULLETPROOF
+# ═══════════════════════════════════════════════════════
 step "BUILDING PROJECT"
 
+# ── Create directories with verification ──────────────
 log "Creating directories..."
-mkdir -p "$PROJECT_DIR"
-mkdir -p "$SHORTCUT_DIR"
 
-log "Writing backup engine v3.0..."
+# Ensure storage is actually accessible
+if [[ ! -d "/storage/emulated/0" ]]; then
+    err "Internal storage not accessible. Run: termux-setup-storage"
+fi
+
+# Create project directory
+if ! mkdir -p "$PROJECT_DIR" 2>/dev/null; then
+    err "Failed to create $PROJECT_DIR"
+fi
+
+# Verify it exists
+if [[ ! -d "$PROJECT_DIR" ]]; then
+    err "Directory creation failed: $PROJECT_DIR"
+fi
+ok "Project directory ready"
+
+# Create shortcut directory
+mkdir -p "$SHORTCUT_DIR" 2>/dev/null || true
+
+# ── Write backup.py ───────────────────────────────────
+log "Writing backup engine v3.1..."
+
+# Verify we can write to the directory
+if [[ ! -w "$PROJECT_DIR" ]]; then
+    err "Cannot write to $PROJECT_DIR"
+fi
+
+# Write the file using a here-document
 cat > "$PROJECT_DIR/backup.py" << 'PYEOF'
 #!/data/data/com.termux/files/usr/bin/env python3
 # ═══════════════════════════════════════════════════════
@@ -905,17 +953,31 @@ if __name__ == "__main__":
 
 PYEOF
 
-chmod +x "$PROJECT_DIR/backup.py"
-ok "backup.py written (v3.0 embedded)"
+# Verify the file was written
+if [[ ! -f "$PROJECT_DIR/backup.py" ]]; then
+    err "backup.py was not written to disk"
+fi
 
+# Verify it's not empty
+if [[ ! -s "$PROJECT_DIR/backup.py" ]]; then
+    err "backup.py is empty"
+fi
+
+chmod +x "$PROJECT_DIR/backup.py"
+ok "backup.py written ($(wc -l < "$PROJECT_DIR/backup.py") lines)"
+
+# ── Write config.json ──────────────────────────────────
 log "Writing config.json..."
 
-cat > /tmp/write_config.py << 'PYCFG'
+# Create config writer script
+CFG_WRITER="$PROJECT_DIR/.write_config.py"
+
+cat > "$CFG_WRITER" << 'PYCFG'
 import json
 import sys
 
 cfg = {
-    "_comment": "Generated by install.sh v3.0",
+    "_comment": "Generated by install.sh v3.1",
     "token": sys.argv[1],
     "chat_id": sys.argv[2],
     "folders": json.loads("[" + sys.argv[3] + "]"),
@@ -930,7 +992,7 @@ cfg = {
     "retry_attempts": 3,
     "notification_level": sys.argv[10],
     "backup_mode": sys.argv[11],
-    "version": "3.0"
+    "version": "3.1"
 }
 
 with open(sys.argv[12], "w") as f:
@@ -941,12 +1003,23 @@ with open(sys.argv[12], "w") as f:
 print("config.json written")
 PYCFG
 
-python3 /tmp/write_config.py     "$TOKEN" "$CHAT_ID" "$FOLDERS" "$MAX_SIZE"     "$INCLUDE_AUDIO" "$INCLUDE_DOCS" "$INCLUDE_ARCHIVES"     "$DEDUPLICATE" "$RATE_LIMIT" "$NOTIFY_LEVEL" "$BACKUP_MODE"     "${PROJECT_DIR}/config.json" || err "Failed to write config.json"
+# Run the config writer
+if ! python3 "$CFG_WRITER"     "$TOKEN" "$CHAT_ID" "$FOLDERS" "$MAX_SIZE"     "$INCLUDE_AUDIO" "$INCLUDE_DOCS" "$INCLUDE_ARCHIVES"     "$DEDUPLICATE" "$RATE_LIMIT" "$NOTIFY_LEVEL" "$BACKUP_MODE"     "${PROJECT_DIR}/config.json"; then
+    err "Failed to write config.json"
+fi
 
-rm -f /tmp/write_config.py
+# Verify config.json
+if [[ ! -f "$PROJECT_DIR/config.json" ]]; then
+    err "config.json was not written"
+fi
+
+# Clean up
+rm -f "$CFG_WRITER"
 ok "config.json written"
 
+# ── Widget Shortcut ───────────────────────────────────
 log "Creating widget shortcut..."
+mkdir -p "$SHORTCUT_DIR" 2>/dev/null || true
 cat > "$SHORTCUT_DIR/BackupNow.sh" << 'EOF'
 #!/data/data/com.termux/files/usr/bin/sh
 termux-wake-lock
@@ -955,11 +1028,13 @@ EOF
 chmod +x "$SHORTCUT_DIR/BackupNow.sh"
 ok "Widget shortcut ready"
 
+# ── Cron Job ──────────────────────────────────────────
 log "Setting up cron (05:30 daily)..."
 (crontab -l 2>/dev/null | grep -v "termux_backups_telegram" || true
  echo "30 5 * * * termux-wake-lock && python3 $PROJECT_DIR/backup.py") | crontab -
 ok "Cron scheduled"
 
+# ── Test Bot ──────────────────────────────────────────
 log "Testing bot token..."
 if python3 -c "
 import requests, json
@@ -973,6 +1048,9 @@ else
     warn "Bot test failed — verify your TOKEN"
 fi
 
+# ═══════════════════════════════════════════════════════
+# SUCCESS
+# ═══════════════════════════════════════════════════════
 banner
 
 printf "${G}${W}✅ Installation Complete!${RS}
